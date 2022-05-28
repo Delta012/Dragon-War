@@ -20,6 +20,8 @@ Quest Property MQKillDragon Auto
 
 Sound Property NPCDragonFlyby Auto
 
+Spell Property DragonLand Auto
+
 WIFunctionsScript Property WI Auto
 
 WorldSpace Property DLC2ApocryphaWorld Auto
@@ -102,7 +104,7 @@ State Alive
 			PlayImpactEffect(FXDragonTakeoffImpactSet, "NPC Pelvis", 0, 0, -1, 512)
 		elseIf (eventName == "DragonForcefulLandEffect")
 			PlayImpactEffect(FXDragonLandingImpactSet, "NPC Pelvis", 0, 0, -1, 512)
-			KnockAreaEffect(1, 2*GetLength())
+			DragonLand.Cast(Self)
 		elseIf (eventName == "DragonTakeoffEffect")
 			PlayImpactEffect(FXDragonTakeoffImpactSet, "NPC Tail8", 0, 0, -1, 2048)
 		elseIf (eventName == "DragonBiteEffect")
@@ -143,8 +145,8 @@ State DeadAndWaiting
 			RegisterForSingleUpdateGameTime(0.5)
 		elseIf MQKillDragons.ShouldMiraakAppear(Self) && MiraakAppeared == False
 			GotoState("DeadDisintegrated")
-			MiraakAppeared = true
-			MQKillDragons.DeathSequence(Self, MiraakAppears = true)
+			MiraakAppeared = True
+			MQKillDragons.DeathSequence(Self, MiraakAppears = True)
 			RegisterForSingleUpdateGameTime(0.5)
 		else
 			While GetDistance(Game.GetPlayer()) > DeathFXRange
@@ -160,6 +162,9 @@ State DeadAndWaiting
 EndState
 
 State DeadDisintegrated
+
+	;None
+
 EndState
 
 Function AnimateFOV(Float fFOVFalloff = 1600.0)
@@ -175,7 +180,7 @@ Function AnimateFOV(Float fFOVFalloff = 1600.0)
 	
 EndFunction
 
-Function OnUpdateGameTime()
+Event OnUpdateGameTime()
 
 	Cell DragonCell = Self.GetParentCell()
 	If !DragonCell.IsAttached()
@@ -184,7 +189,7 @@ Function OnUpdateGameTime()
 		RegisterForSingleUpdateGameTime(0.5)
 	endIf
 	
-EndFunction
+EndEvent
 
 Function NoStalking()
 
