@@ -1,12 +1,10 @@
 Scriptname DragonActorScript extends Actor
 
-ActorBase Property Durnehviir Auto
-
 Bool MiraakAppeared
 Bool MiraakIntroductionHappened
 
 Float Property DeathFXRange = 1024.0 Auto
-Float Property FOVFalloff Auto Hidden
+Float Property FOVFalloff = 1600.0 Auto Hidden
 
 ImageSpaceModIfier Property DragonFOVFX Auto
 
@@ -20,42 +18,16 @@ Quest Property MQKillDragon Auto
 
 Sound Property NPCDragonFlyby Auto
 
-Spell Property DragonLand Auto
+Spell Property DragonLanding Auto
+Spell Property DragonTailstomp Auto
+Spell Property DragonTakeoff Auto
 
 WIFunctionsScript Property WI Auto
 
 WorldSpace Property DLC2ApocryphaWorld Auto
-
-Event OnInit()
-
-	FOVFalloff = 1600
-		If DeathFXRange == 0
-			DeathFXRange = 1000
-		endIf
-		
-		If !IsDead() && IsGhost()
-			SetGhost(False)
-		endIf
-		
-	GotoState("Alive")
-
-EndEvent
-	
-Event OnReset()
-
-	SetGhost(False)
-	
-EndEvent
 	
 Event OnLoad()
 
-	If !IsDead()
-		If IsGhost()
-			SetGhost(False)
-		endIf
-		GotoState("Alive")
-	endIf
-	
 	RegisterForAnimationEvent(Self, "DragonLandEffect")
 	RegisterForAnimationEvent(Self, "DragonForcefulLandEffect")
 	RegisterForAnimationEvent(Self, "DragonTakeoffEffect")
@@ -66,6 +38,18 @@ Event OnLoad()
 	RegisterForAnimationEvent(Self, "DragonPassByEffect")
 	RegisterForAnimationEvent(Self, "flightCrashLandStart")
 	RegisterForAnimationEvent(Self, "DragonKnockbackEvent")
+
+	If !IsDead() && IsGhost()
+		SetGhost(False)
+	endIf
+
+	GoToState("Alive")
+	
+EndEvent
+
+Event OnReset()
+
+	SetGhost(False)
 	
 EndEvent
 
@@ -84,6 +68,7 @@ EndEvent
 State Alive
 
 	Event OnCombatStateChanged(Actor akTarget, Int aeCombatState)		
+
 		If !IsDead() && IsGhost()
 			SetGhost(False)
 		endIf
@@ -94,31 +79,34 @@ State Alive
 		
 	EndEvent
 
-	Event OnAnimationEvent(ObjectReference deliverator, String eventName)
+	Event OnAnimationEvent(ObjectReference akSource, String asEventName)
 	
-		If (eventName == "DragonLandEffect")
+		If (asEventName == "DragonLandEffect")
 			Game.ShakeCamera(Self, 1)
 			Game.ShakeController(95, 95, 2)
 			KnockAreaEffect(1, GetLength())
 			AnimateFOV()
+			DragonTakeoff.Cast(Self)
 			PlayImpactEffect(FXDragonTakeoffImpactSet, "NPC Pelvis", 0, 0, -1, 512)
-		elseIf (eventName == "DragonForcefulLandEffect")
+		elseIf (asEventName == "DragonForcefulLandEffect")
+			DragonLanding.Cast(Self)
 			PlayImpactEffect(FXDragonLandingImpactSet, "NPC Pelvis", 0, 0, -1, 512)
-			DragonLand.Cast(Self)
-		elseIf (eventName == "DragonTakeoffEffect")
+		elseIf (asEventName == "DragonTakeoffEffect")
+			DragonTakeoff.Cast(Self)
 			PlayImpactEffect(FXDragonTakeoffImpactSet, "NPC Tail8", 0, 0, -1, 2048)
-		elseIf (eventName == "DragonBiteEffect")
-		elseIf (eventName == "DragonTailAttackEffect")
+		elseIf (asEventName == "DragonBiteEffect")
+		elseIf (asEventName == "DragonTailAttackEffect")
+			DragonTailstomp.Cast(Self)
 			PlayImpactEffect(FXDragonTailstompImpactSet, "NPC Tail8", 0, 0, -1, 512)
-		elseIf (eventName == "DragonLeftWingAttackEffect")
+		elseIf (asEventName == "DragonLeftWingAttackEffect")
 			PlayImpactEffect(FXDragonTailstompImpactSet, "NPC LHand", 0, 0, -1, 512)
-		elseIf (eventName == "DragonRightWingAttackEffect")
+		elseIf (asEventName == "DragonRightWingAttackEffect")
 			PlayImpactEffect(FXDragonTailstompImpactSet, "NPC RHand", 0, 0, -1, 512)
-		elseIf (eventName == "DragonPassByEffect")
+		elseIf (asEventName == "DragonPassByEffect")
 			NPCDragonFlyby.Play(Self)
 			Game.ShakeCamera(Self, 0.85)
 			Game.ShakeController(0.65, 0.65, 0.5)
-		elseIf (eventName == "DragonKnockbackEvent")
+		elseIf (asEventName == "DragonKnockbackEvent")
 			KnockAreaEffect(1, 1.5*GetLength())
 			AnimateFOV(1.5*GetLength())
 		endIf
@@ -128,7 +116,7 @@ State Alive
 	Event OnDeath(Actor Killer)
 	
 		WI.startWIDragonKillQuest(Self)
-		GotoState("DeadAndWaiting")
+		GoToState("DeadAndWaiting")
 
 	EndEvent
 	
@@ -140,21 +128,21 @@ State DeadAndWaiting
 	
 		MQKillDragonScript MQKillDragons = MQKillDragon as MQKillDragonScript
 		If DLC2ApocryphaLocation && DLC2ApocryphaWorld && (Game.GetPlayer().IsInLocation(DLC2ApocryphaLocation) || Game.GetPlayer().GetWorldSpace() == DLC2ApocryphaWorld)
-			GotoState("DeadDisintegrated")
+			GoToState("DeadDisintegrated")
 			MQKillDragons.DeathSequence(Self)
-			RegisterForSingleUpdateGameTime(0.5)
+			Self.NoStalking()
 		elseIf MQKillDragons.ShouldMiraakAppear(Self) && MiraakAppeared == False
-			GotoState("DeadDisintegrated")
+			GoToState("DeadDisintegrated")
 			MiraakAppeared = True
 			MQKillDragons.DeathSequence(Self, MiraakAppears = True)
-			RegisterForSingleUpdateGameTime(0.5)
+			Self.NoStalking()
 		else
 			While GetDistance(Game.GetPlayer()) > DeathFXRange
 				Utility.Wait(1.0)
 			endWhile
-			GotoState("DeadDisintegrated")
+			GoToState("DeadDisintegrated")
 			MQKillDragons.DeathSequence(Self)
-			RegisterForSingleUpdateGameTime(0.5)
+			Self.NoStalking()
 		endIf
 
 	EndEvent
@@ -169,6 +157,7 @@ EndState
 
 Function AnimateFOV(Float fFOVFalloff = 1600.0)
 
+	fFOVFalloff = FOVFalloff
 	Float PlayerDist = Game.GetPlayer().GetDistance(Self)
 	If PlayerDist < fFOVfalloff
 		Float FOVPower = (1- (1/(fFOVfalloff/(PlayerDist))))
@@ -180,24 +169,15 @@ Function AnimateFOV(Float fFOVFalloff = 1600.0)
 	
 EndFunction
 
-Event OnUpdateGameTime()
-
-	Cell DragonCell = Self.GetParentCell()
-	If !DragonCell.IsAttached()
-		NoStalking()
-	else
-		RegisterForSingleUpdateGameTime(0.5)
-	endIf
-	
-EndEvent
-
 Function NoStalking()
-
-	If Self.Durnehviir
-		Return
-	else
-		Self.DispelAllSpells()
-		Self.SetCriticalStage(Self.CritStage_DisintegrateEnd)
+	
+	If !(Self.GetParentCell()).IsAttached()
+		If Self.GetActorBase() as Form == Game.GetFormFromFile(0x000030D8, "Dawnguard.esm")
+			Return
+		else
+			Self.DispelAllSpells()
+			Self.SetCriticalStage(Self.CritStage_DisintegrateEnd)
+		endIf
 	endIf
 	
-EndFunction 
+EndFunction
